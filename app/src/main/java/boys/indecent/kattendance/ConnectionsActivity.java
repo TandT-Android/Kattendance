@@ -393,10 +393,12 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
 
                                 if (getServiceId().equals(discoveredEndpointInfo.getServiceId())) {
                                     Endpoint endpoint = new Endpoint(endpointId, discoveredEndpointInfo.getEndpointName());
-                                    if (checkEndpointEligibilityAsChild(endpoint)){
-                                        mDiscoveredEndpoints.put(endpointId, endpoint);
-                                        onEndpointDiscovered(endpoint);
-                                    }
+//                                    if (checkEndpointEligibilityAsChild(endpoint)){
+//                                        mDiscoveredEndpoints.put(endpointId, endpoint);
+//                                        onEndpointDiscovered(endpoint);
+//                                    }
+                                    mDiscoveredEndpoints.put(endpointId, endpoint);
+                                    onEndpointDiscovered(endpoint);
                                 }
                             }
 
@@ -444,10 +446,10 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     /** Called when discovery fails to start. Override this method to act on the event. */
     protected void onDiscoveryFailed() {}
 
-    /** Called to check as a child if the endpoint meets the requirements to be a parent*/
-    protected boolean checkEndpointEligibilityAsChild(Endpoint endpoint){
-        return true;
-    }
+//    /** Called to check as a child if the endpoint meets the requirements to be a parent*/
+//    protected boolean checkEndpointEligibilityAsChild(Endpoint endpoint){
+//        return true;
+//    }
 
     /**
      * Called when a remote endpoint is discovered. To connect to the device, call {@link
