@@ -31,6 +31,7 @@ import com.google.android.gms.nearby.connection.Strategy;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -60,9 +61,15 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
 
     /**
      * The devices we have pending connections to. They will stay pending until we call {@link
-     * #acceptConnection(Endpoint)} or {@link #rejectConnection(Endpoint)}.
+     * #acceptConnectionAsParent(Endpoint)} or {@link #rejectConnection(Endpoint)}.
      */
-    private final Map<String, Endpoint> mPendingConnections = new HashMap<>();
+    private final Map<String, Endpoint> mPendingChildConnections = new HashMap<>();
+
+    /**
+     * The devices we have pending connections to. They will stay pending until we call {@link
+     * #acceptConnectionAsChild(Endpoint)} or {@link #rejectConnection(Endpoint)}.
+     */
+    private final Map<String, Endpoint> mPendingParentConnections = new HashMap<>();
 
     /** The child devices we are currently connected to. */
     private final Map<String, Endpoint> mEstablishedChildConnections = new HashMap<>();
@@ -87,32 +94,13 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
             new ConnectionLifecycleCallback() {
                 @Override
                 public void onConnectionInitiated(@NonNull String endpointId, @NonNull ConnectionInfo connectionInfo) {
-
-                }
-
-                @Override
-                public void onConnectionResult(@NonNull String endpointId, @NonNull ConnectionResolution connectionResolution) {
-
-                }
-
-                @Override
-                public void onDisconnected(@NonNull String endpointId) {
-
-                }
-            };
-
-    /** Callback for connections to child devices as a parent device */
-    private final ConnectionLifecycleCallback mConnectionLifecycleCallbackAsParent =
-            new ConnectionLifecycleCallback() {
-                @Override
-                public void onConnectionInitiated(@NonNull String endpointId, @NonNull ConnectionInfo connectionInfo) {
                     Log.d(TAG, String.format(
-                            "onConnectionInitiated(endpointId=%s, endpointName=%s)",
+                            "onConnectionInitiatedAsChild(endpointId=%s, endpointName=%s)",
                             endpointId, connectionInfo.getEndpointName()));
 
                     Endpoint endpoint = new Endpoint(endpointId, connectionInfo.getEndpointName());
-                    mPendingConnections.put(endpointId,endpoint);
-                    ConnectionsActivity.this.onConnectionInitiated(endpoint, connectionInfo);
+                    mPendingParentConnections.put(endpointId,endpoint);
+                    ConnectionsActivity.this.onConnectionInitiatedAsChild(endpoint, connectionInfo);
                 }
 
                 @Override
@@ -134,50 +122,115 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
                                 "Connection failed. Received status "
                                         + ConnectionsActivity.toString(connectionResolution.getStatus())
                         );
-                        onConnectionFailed(mPendingConnections.remove(endpointId));
+                        onConnectionFailed(mPendingParentConnections.remove(endpointId));
                         return;
                     }
-                    connectedToEndpointAsParent(mPendingConnections.remove(endpointId));
+                    connectedToEndpointAsChild(mPendingParentConnections.remove(endpointId));
                 }
 
                 @Override
                 public void onDisconnected(@NonNull String endpointId) {
-                    //TODO : Start frm here
+                    if (!mEstablishedParentConnection.getId().equals(endpointId)){
+                        Log.w(TAG,"Unexpected disconnection from endpoint " + endpointId);
+                        return;
+                    }
+                    disconnectedFromEndpointAsChild(mEstablishedParentConnection);
                 }
             };
 
+    /** Callback for connections to child devices as a parent device */
+    private final ConnectionLifecycleCallback mConnectionLifecycleCallbackAsParent =
+            new ConnectionLifecycleCallback() {
+                @Override
+                public void onConnectionInitiated(@NonNull String endpointId, @NonNull ConnectionInfo connectionInfo) {
+                    Log.d(TAG, String.format(
+                            "onConnectionInitiatedAsParent(endpointId=%s, endpointName=%s)",
+                            endpointId, connectionInfo.getEndpointName()));
+
+                    Endpoint endpoint = new Endpoint(endpointId, connectionInfo.getEndpointName());
+                    mPendingChildConnections.put(endpointId,endpoint);
+                    ConnectionsActivity.this.onConnectionInitiatedAsParent(endpoint, connectionInfo);
+                }
+
+                @Override
+                public void onConnectionResult(@NonNull String endpointId, @NonNull ConnectionResolution connectionResolution) {
+                    Log.d(
+                            TAG,
+                            String.format(
+                                    "onConnectionResponse(endpointId=%s, result=%s)",
+                                    endpointId,
+                                    connectionResolution
+                            )
+                    );
+
+                    mIsConnecting = false;
+
+                    if (!connectionResolution.getStatus().isSuccess()){
+                        Log.w(
+                                TAG,
+                                "Connection failed. Received status "
+                                        + ConnectionsActivity.toString(connectionResolution.getStatus())
+                        );
+                        onConnectionFailed(mPendingChildConnections.remove(endpointId));
+                        return;
+                    }
+                    connectedToEndpointAsParent(mPendingChildConnections.remove(endpointId));
+                }
+
+                @Override
+                public void onDisconnected(@NonNull String endpointId) {
+                    if (!mEstablishedChildConnections.containsKey(endpointId)){
+                        Log.w(TAG,"Unexpected disconnection from endpoint " + endpointId);
+                        return;
+                    }
+                    disconnectedFromEndpointAsParent(mEstablishedChildConnections.get(endpointId));
+                }
+            };
+
+    /** Callbacks for payloads (bytes of data) sent from parent device to us. */
     private final PayloadCallback payloadCallbackAsChild =
             new PayloadCallback() {
                 @Override
-                public void onPayloadReceived(@NonNull String s, @NonNull Payload payload) {
-
+                public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
+                    Log.d(TAG,String.format("onPayloadReceivedFromParent(endpointId=%s, payload=%s)", endpointId, payload));
+                    onReceiveAsChild(mEstablishedChildConnections.get(endpointId), payload);
                 }
 
                 @Override
-                public void onPayloadTransferUpdate(@NonNull String s, @NonNull PayloadTransferUpdate payloadTransferUpdate) {
-
+                public void onPayloadTransferUpdate(@NonNull String endpointId, @NonNull PayloadTransferUpdate payloadTransferUpdate) {
+                    Log.d(
+                            TAG,
+                            String.format(
+                                    "onPayloadTransferUpdateFromParent(endpointId=%s, update=%s)", endpointId, payloadTransferUpdate));
                 }
             };
 
+    /** Callbacks for payloads (bytes of data) sent from child devices to us. */
     private final PayloadCallback payloadCallbackAsParent =
             new PayloadCallback() {
                 @Override
-                public void onPayloadReceived(@NonNull String s, @NonNull Payload payload) {
-
+                public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
+                    Log.d(TAG,String.format("onPayloadReceivedFromChild(endpointId=%s, payload=%s)", endpointId, payload));
+                    onReceiveAsParent(mEstablishedChildConnections.get(endpointId), payload);
                 }
 
                 @Override
-                public void onPayloadTransferUpdate(@NonNull String s, @NonNull PayloadTransferUpdate payloadTransferUpdate) {
-
+                public void onPayloadTransferUpdate(@NonNull String endpointId, @NonNull PayloadTransferUpdate payloadTransferUpdate) {
+                    Log.d(
+                            TAG,
+                            String.format(
+                                    "onPayloadTransferUpdateFromChild(endpointId=%s, update=%s)", endpointId, payloadTransferUpdate));
                 }
             };
 
+    /** Called when our Activity is first created. */
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mConnectionClient = Nearby.getConnectionsClient(this);
     }
 
+    /** Called when our Activity has been made visible to the user. */
     @Override
     protected void onStart() {
         super.onStart();
@@ -206,6 +259,11 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
+    /**
+     * Sets the device to advertising mode. It will broadcast to other devices in discovery mode.
+     * Either {@link #onAdvertisingStarted()} or {@link #onAdvertisingFailed()} will be called once
+     * we've found out if we successfully entered this mode.
+     */
     protected void startAdvertising(){
         mIsAdvertising = true;
         final String localEndpointName = getName();
@@ -257,13 +315,33 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     /**
      * Called when a pending connection with a remote endpoint is created. Use {@link ConnectionInfo}
      * for metadata about the connection (like incoming vs outgoing, or the authentication token). If
-     * we want to continue with the connection, call {@link #acceptConnection(Endpoint)}. Otherwise,
-     * call {@link #rejectConnection(Endpoint)}.
+     * we want to continue with the connection, call {@link #acceptConnectionAsChild(Endpoint)}.
+     * Otherwise, call {@link #rejectConnection(Endpoint)}.
      */
-    protected void onConnectionInitiated(Endpoint endpoint, ConnectionInfo connectionInfo) {}
+    protected void onConnectionInitiatedAsChild(Endpoint endpoint, ConnectionInfo connectionInfo) {}
+
+    /**
+     * Called when a pending connection with a remote endpoint is created. Use {@link ConnectionInfo}
+     * for metadata about the connection (like incoming vs outgoing, or the authentication token). If
+     * we want to continue with the connection, call {@link #acceptConnectionAsParent(Endpoint)}.
+     * Otherwise, call {@link #rejectConnection(Endpoint)}.
+     */
+    protected void onConnectionInitiatedAsParent(Endpoint endpoint, ConnectionInfo connectionInfo) {}
 
     /** Accepts a connection request*/
-    protected void acceptConnection(final Endpoint endpoint){
+    protected void acceptConnectionAsChild(final Endpoint endpoint){
+        mConnectionClient
+                .acceptConnection(endpoint.getId(), payloadCallbackAsChild)
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w(TAG,"acceptConnection() failed.",e);
+                    }
+                });
+    }
+
+    /** Accepts a connection request*/
+    protected void acceptConnectionAsParent(final Endpoint endpoint){
         mConnectionClient
                 .acceptConnection(endpoint.getId(), payloadCallbackAsParent)
                 .addOnFailureListener(new OnFailureListener() {
@@ -304,13 +382,29 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
                         getServiceId(),
                         new EndpointDiscoveryCallback() {
                             @Override
-                            public void onEndpointFound(@NonNull String s, @NonNull DiscoveredEndpointInfo discoveredEndpointInfo) {
+                            public void onEndpointFound(@NonNull String endpointId, @NonNull DiscoveredEndpointInfo discoveredEndpointInfo) {
+                                Log.d(
+                                        TAG,
+                                        String.format(
+                                                "onEndpointFound(endpointId=%s, serviceId=%s, endpointName=%s)",
+                                                endpointId, discoveredEndpointInfo.getServiceId(),
+                                                discoveredEndpointInfo.getEndpointName())
+                                );
 
+                                if (getServiceId().equals(discoveredEndpointInfo.getServiceId())) {
+                                    Endpoint endpoint = new Endpoint(endpointId, discoveredEndpointInfo.getEndpointName());
+                                    if (checkEndpointEligibilityAsChild(endpoint)){
+                                        mDiscoveredEndpoints.put(endpointId, endpoint);
+                                        onEndpointDiscovered(endpoint);
+                                    }
+                                }
                             }
 
                             @Override
-                            public void onEndpointLost(@NonNull String s) {
+                            public void onEndpointLost(@NonNull String endpointId) {
+                                Log.d(TAG,String.format("onEndpointLost(endpointId=%s)", endpointId));
 
+                                mDiscoveredEndpoints.remove(endpointId);
                             }
                         },
                         discoveryOptions
@@ -350,6 +444,11 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
     /** Called when discovery fails to start. Override this method to act on the event. */
     protected void onDiscoveryFailed() {}
 
+    /** Called to check as a child if the endpoint meets the requirements to be a parent*/
+    protected boolean checkEndpointEligibilityAsChild(Endpoint endpoint){
+        return true;
+    }
+
     /**
      * Called when a remote endpoint is discovered. To connect to the device, call {@link
      * #connectToEndpoint(Endpoint)}.
@@ -382,14 +481,14 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         mIsDiscovering = false;
         mIsConnecting = false;
         mDiscoveredEndpoints.clear();
-        mPendingConnections.clear();
+        mPendingChildConnections.clear();
         mEstablishedChildConnections.clear();
         mEstablishedParentConnection = null;
     }
 
     /**
-     * Sends a connection request to the endpoint. Either {@link #onConnectionInitiated(Endpoint,
-     * ConnectionInfo)} or {@link #onConnectionFailed(Endpoint)} will be called once we've found out
+     * Sends a connection request to the endpoint. Either {@link #onConnectionInitiatedAsChild(Endpoint, ConnectionInfo)}
+     * or {@link #onConnectionFailed(Endpoint)} will be called once we've found out
      * if we successfully reached the device.
      */
     protected void connectToEndpoint(final Endpoint endpoint){
@@ -471,13 +570,63 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         return mEstablishedParentConnection;
     }
 
+    /**
+     * Sends a {@link Payload} to parent endpoint.
+     *
+     * @param payload The data you want to send.
+     */
+    protected void sendToParent(Payload payload) {
+        send(payload, mEstablishedParentConnection);
+    }
 
+    /**
+     * Sends a {@link Payload} to child endpoint.
+     *
+     * @param payload The data you want to send.
+     */
+    protected void sendToChild(Payload payload, String endpointId) {
+        send(payload, endpointId);
+    }
 
+    private void send(Payload payload, String endpointId) {
+        mConnectionClient
+                .sendPayload(endpointId, payload)
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                logW("sendPayload() failed.", e);
+                            }
+                        });
+    }
 
+    private void send(Payload payload, Endpoint endpoint) {
+        mConnectionClient
+                .sendPayload(endpoint.getId(), payload)
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                logW("sendPayload() failed.", e);
+                            }
+                        });
+    }
 
+    /**
+     * Parent connected to us has sent us data. Override this method to act on the event.
+     *
+     * @param endpoint The sender.
+     * @param payload The data.
+     */
+    protected void onReceiveAsChild(Endpoint endpoint, Payload payload) {}
 
-
-
+    /**
+     * A child connected to us has sent us data. Override this method to act on the event.
+     *
+     * @param endpoint The sender.
+     * @param payload The data.
+     */
+    protected void onReceiveAsParent(Endpoint endpoint, Payload payload) {}
 
     /** @return All permissions required for the app to properly function. */
     private String[] getRequiredPermissions() {
@@ -530,6 +679,30 @@ public abstract class ConnectionsActivity extends AppCompatActivity {
         return true;
     }
 
+    @CallSuper
+    protected void logV(String msg) {
+        Log.v(TAG, msg);
+    }
+
+    @CallSuper
+    protected void logD(String msg) {
+        Log.d(TAG, msg);
+    }
+
+    @CallSuper
+    protected void logW(String msg) {
+        Log.w(TAG, msg);
+    }
+
+    @CallSuper
+    protected void logW(String msg, Throwable e) {
+        Log.w(TAG, msg, e);
+    }
+
+    @CallSuper
+    protected void logE(String msg, Throwable e) {
+        Log.e(TAG, msg, e);
+    }
 
     /** Represents a device communicate */
     protected static class Endpoint {
