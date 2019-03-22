@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Kattendance</string>
+    <string name="error_missing_permissions">Can not start without required permissions</string>
 </resources>
