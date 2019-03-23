@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Kattendance</string>
     <string name="error_missing_permissions">Can not start without required permissions</string>
+    <!--<string name="default_web_client_id">81756185163-3plogau8gmi7fu62nn1evkqkpeofch2i.apps.googleusercontent.com</string>-->
 </resources>
