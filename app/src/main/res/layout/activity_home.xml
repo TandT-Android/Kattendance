@@ -4,10 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LauncherActivity">
+    tools:context=".HomeActivity">
 
-
-
-
-
+    <Button
+        android:id="@+id/signOutButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sign Out"
+        tools:layout_editor_absoluteX="161dp"
+        tools:layout_editor_absoluteY="562dp" />
 </android.support.constraint.ConstraintLayout>
