@@ -1,7 +1,8 @@
 package boys.indecent.kattendance;
 
-import android.os.Bundle;
 import android.os.Handler;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.format.DateFormat;
 import android.text.style.ForegroundColorSpan;
@@ -13,22 +14,26 @@ import com.google.android.gms.nearby.connection.Strategy;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.io.IOException;
-import java.util.AbstractQueue;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
-public class NearbyAttendanceActivity extends ConnectionsActivity {
-    /** If true, debug logs are shown on the device. */
+public class DemoTeacher extends ConnectionsActivity {
+    /**
+     * If true, debug logs are shown on the device.
+     */
     private static final boolean DEBUG = true;
 
-    /** The time(in millisecond) to wait before attempting connection to a endpoint */
+    /**
+     * The time(in millisecond) to wait before attempting connection to a endpoint
+     */
     private static final int DISCOVERING_DELAY = 500;
 
-    /** The limit of the connections of an endpoint */
+    /**
+     * The limit of the connections of an endpoint
+     */
     private static final int MAX_CONNECTION_LIMIT = 1;
 
 
@@ -38,8 +43,10 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
      */
     private static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
-    /** The timeout time to send a second request */
-    private static final int ACK_TIMEOUT = 20000;
+    /**
+     * The timeout time to send a second request
+     */
+    private static final int ACK_TIMEOUT = 2000;
 
     /**
      * This service id lets us find other nearby devices that are interested in the same thing.
@@ -47,13 +54,19 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
      */
     private String SERVICE_ID;
 
-    /** A random UID used as this device's endpoint name. */
+    /**
+     * A random UID used as this device's endpoint name.
+     */
     private String mName;
 
-    /** If true, the endpoint needs to send details for attendance */
+    /**
+     * If true, the endpoint needs to send details for attendance
+     */
     private boolean isRequestPending;
 
-    /** If true, the endpoint does not need to send any more request */
+    /**
+     * If true, the endpoint does not need to send any more request
+     */
     private boolean isAckReceived;
 
     /**
@@ -62,26 +75,27 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
      */
     private State mState = State.UNKNOWN;
 
-    /** The queue to store the forwarding responses when the endpoint is disconnected */
+    /**
+     * The queue to store the forwarding responses when the endpoint is disconnected
+     */
     private Queue<Payload> forwardingQueue;
 
-    /** A running log of debug messages. Only visible when DEBUG=true. */
+    /**
+     * A running log of debug messages. Only visible when DEBUG=true.
+     */
     private TextView mDebugLogView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_nearby_attendance);
+        setContentView(R.layout.activity_demo_teacher);
 
-        mDebugLogView = findViewById(R.id.debug_log);
-        isRequestPending = true;
-        isAckReceived = false;
-        forwardingQueue = new ArrayDeque<>();
+        mDebugLogView = findViewById(R.id.debug_log2);
 
         generateName();
         generateServiceId();
 
-        setState(State.SEARCHING);
+        setState(State.ADVERTISING);
     }
 
     @Override
@@ -100,7 +114,7 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     }
 
     @Override
-    protected void onEndpointDiscovered(Endpoint endpoint) {
+    protected void onEndpointDiscovered(ConnectionsActivity.Endpoint endpoint) {
         super.onEndpointDiscovered(endpoint);
         connectToEndpoint(endpoint);
         setState(State.CONNECTING);
@@ -108,30 +122,30 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     }
 
     @Override
-    protected void onEndpointConnectedAsChild(Endpoint endpoint) {
+    protected void onEndpointConnectedAsChild(ConnectionsActivity.Endpoint endpoint) {
         super.onEndpointConnectedAsChild(endpoint);
         setState(State.CONNECTED);
     }
 
     @Override
-    protected void onConnectionFailed(Endpoint endpoint) {
+    protected void onConnectionFailed(ConnectionsActivity.Endpoint endpoint) {
         super.onConnectionFailed(endpoint);
         setState(State.SEARCHING);
     }
 
     @Override
-    protected void onEndpointDisconnectedAsChild(Endpoint endpoint) {
+    protected void onEndpointDisconnectedAsChild(ConnectionsActivity.Endpoint endpoint) {
         super.onEndpointDisconnectedAsChild(endpoint);
         setState(State.SEARCHING);
-        if (isAdvertising()){
+        if (isAdvertising()) {
             stopAdvertising();
         }
     }
 
-    protected void triggerAdvertising(){
+    protected void triggerAdvertising() {
         if (isAdvertising())
             stopAdvertising();
-        switch (getState()){
+        switch (getState()) {
             case ADVERTISING:
                 setState(State.ADVERTISING);
                 break;
@@ -146,30 +160,28 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     protected void onAdvertisingFailed() {
         super.onAdvertisingFailed();
         logW("Advertising failed");
-        //startAdvertising();
+        startAdvertising();
     }
 
     @Override
-    protected void onConnectionInitiatedAsChild(Endpoint endpoint, ConnectionInfo connectionInfo) {
+    protected void onConnectionInitiatedAsChild(ConnectionsActivity.Endpoint endpoint, ConnectionInfo connectionInfo) {
         super.onConnectionInitiatedAsChild(endpoint, connectionInfo);
         acceptConnectionAsChild(endpoint);
     }
 
     @Override
-    protected void onConnectionInitiatedAsParent(Endpoint endpoint, ConnectionInfo connectionInfo) {
+    protected void onConnectionInitiatedAsParent(ConnectionsActivity.Endpoint endpoint, ConnectionInfo connectionInfo) {
         super.onConnectionInitiatedAsParent(endpoint, connectionInfo);
-        if (!getState().equals(State.CONTENT)){
+        if (!getState().equals(State.CONTENT)) {
             acceptConnectionAsParent(endpoint);
-        } else {
-            rejectConnection(endpoint);
         }
     }
 
     @Override
-    protected void onEndpointConnectedAsParent(Endpoint endpoint) {
+    protected void onEndpointConnectedAsParent(ConnectionsActivity.Endpoint endpoint) {
         super.onEndpointConnectedAsParent(endpoint);
         int connectedChildEndpoints = getConnectedChildEndpoints().size();
-        if (connectedChildEndpoints == MAX_CONNECTION_LIMIT){
+        if (connectedChildEndpoints == MAX_CONNECTION_LIMIT) {
             setState(State.CONTENT);
             Response response = new Response(Response.Code.SET,"DONE");
             try {
@@ -178,30 +190,29 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        } else if (connectedChildEndpoints > MAX_CONNECTION_LIMIT){
+        } else if (connectedChildEndpoints > MAX_CONNECTION_LIMIT) {
             disconnect(endpoint);
         }
     }
 
     @Override
-    protected void onEndpointDisconnectedAsParent(Endpoint endpoint) {
+    protected void onEndpointDisconnectedAsParent(ConnectionsActivity.Endpoint endpoint) {
         super.onEndpointDisconnectedAsParent(endpoint);
         setState(State.ADVERTISING);
     }
 
     @Override
-    protected void onReceiveAsChild(Endpoint endpoint, Payload payload) {
+    protected void onReceiveAsChild(ConnectionsActivity.Endpoint endpoint, Payload payload) {
         super.onReceiveAsChild(endpoint, payload);
         if (payload.getType() == Payload.Type.BYTES) {
             try {
                 Response response = Response.toResponse(payload);
-                switch (response.getCode()){
+                switch (response.getCode()) {
                     case Response.Code.SET:
                         triggerAdvertising();
                         break;
                     case Response.Code.ACK:
-                        logD("Destination : " + response.getDestination().toString());
-                        if (response.getDestination()== null || response.getDestination().isEmpty()){
+                        if (response.getDestination().isEmpty()) {
                             //This response is for me
                             onAckReceived(response);
                         } else {
@@ -214,62 +225,56 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                logE("Response format unsupported",e);
+                logE("Response format unsupported", e);
             }
         }
     }
 
     @Override
-    protected void onReceiveAsParent(Endpoint endpoint, Payload payload) {
+    protected void onReceiveAsParent(ConnectionsActivity.Endpoint endpoint, Payload payload) {
         super.onReceiveAsParent(endpoint, payload);
-        if (payload.getType() == Payload.Type.BYTES){
-            try{
+        if (payload.getType() == Payload.Type.BYTES) {
+            try {
                 Response response = Response.toResponse(payload);
-                switch (response.getCode()){
+                switch (response.getCode()) {
                     case Response.Code.REQ:
-                        forwardResponse(response,endpoint);
+                        forwardResponse(response, endpoint);
                         break;
                     default:
                         logW("Unexpected response from child");
                 }
-            } catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
-                logE("Response format unsupported",e);
+                logE("Response format unsupported", e);
             }
         }
     }
 
-    private void forwardResponse(Response response,Endpoint endpoint) throws IOException {
+    private void forwardResponse(Response response, ConnectionsActivity.Endpoint endpoint) throws IOException {
+        logD("Received attendance : "+ response.getMessage());
         ArrayList<String> destination = response.getDestination();
-        destination.add(endpoint.getName());
-        response.setDestination(destination);
-        Payload payload = Response.toPayload(response);
-        if ((getState().equals(State.ADVERTISING) || getState().equals(State.CONTENT))){
-            //Forwarded the Request to parent
-            sendToParent(payload);
-            logD("Forwarded to the parent");
-        } else {
-            //Added to the queue to forward
-            forwardingQueue.add(payload);
-        }
+        logD("Destination : " + destination.toString());
+        Response reply = new Response(Response.Code.ACK,"POS");
+        reply.setDestination(destination);
+        Payload payload = Response.toPayload(reply);
+        sendToChild(payload,endpoint.getId());
     }
 
-    private void sendRequest(){
-        logD("Sending attendance request");
-        Response response = new Response(Response.Code.REQ,getRollNumber());
+    private void sendRequest() {
+        Response response = new Response(Response.Code.REQ, getRollNumber());
         response.setDestination(new ArrayList<String>());
-        if (isRequestPending){
+        if (isRequestPending) {
             try {
                 sendToParent(Response.toPayload(response));
                 isRequestPending = false;
-                if (!isAckReceived){
+                if (!isAckReceived) {
                     startAckTimer();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        while(forwardingQueue.size() > 0){
+        while (forwardingQueue.size() > 0) {
             sendToParent(forwardingQueue.remove());
         }
     }
@@ -285,8 +290,7 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
 
 
     private void onAckReceived(Response response) {
-        logD("ACK received");
-        if (response.getMessage().equals("POS")){
+        if (response.getMessage().equals("POS")) {
             isAckReceived = true;
             isRequestPending = false;
         }
@@ -294,13 +298,13 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
 
     private void deliverResponse(Response response) throws IOException {
         ArrayList<String> destination = response.getDestination();
-        String nextHopName = destination.get(destination.size()-1);
-        destination.remove(destination.size()-1);
+        String nextHopName = destination.get(destination.size() - 1);
+        destination.remove(destination.size() - 1);
         response.setDestination(destination);
-        Set<Endpoint> endpoints = getConnectedChildEndpoints();
-        for (Endpoint e : endpoints){
-            if (e.getName().equals(nextHopName)){
-                sendToChild(Response.toPayload(response),e.getId());
+        Set<ConnectionsActivity.Endpoint> endpoints = getConnectedChildEndpoints();
+        for (ConnectionsActivity.Endpoint e : endpoints) {
+            if (e.getName().equals(nextHopName)) {
+                sendToChild(Response.toPayload(response), e.getId());
                 return;
             }
         }
@@ -311,8 +315,8 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
      *
      * @param state The new state.
      */
-    private void setState(State state){
-        if (mState == state){
+    private void setState(State state) {
+        if (mState == state) {
             logW("State set to " + state + " but already in that state");
             return;
         }
@@ -320,10 +324,12 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         logD("State set to " + state);
         State oldState = mState;
         mState = state;
-        onStateChanged(oldState,state);
+        onStateChanged(oldState, state);
     }
 
-    /** @return The current state. */
+    /**
+     * @return The current state.
+     */
     private State getState() {
         return mState;
     }
@@ -334,12 +340,9 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
      * @param oldState The previous state we were in. Clean up anything related to this state.
      * @param newState The new state we're now in. Prepare the UI for this state.
      */
-    private void onStateChanged(State oldState, State newState){
-        if (oldState == newState){
-            logD("already in that state");
-            return;
-        }
-        switch (newState){
+    private void onStateChanged(State oldState, State newState) {
+        //TODO : add transition methods
+        switch (newState) {
             case SEARCHING:
                 startDiscovering();
                 break;
@@ -361,16 +364,20 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         }
     }
 
-    /** Generates name for a particular device*/
+    /**
+     * Generates name for a particular device
+     */
     private void generateName() {
         mName = getRollNumber();
     }
 
-    /** Generates service id for a particular section */
-    private void generateServiceId(){
+    /**
+     * Generates service id for a particular section
+     */
+    private void generateServiceId() {
         String section = getSection();
         int semester = getCurrentSemester();
-        SERVICE_ID =  String.format(
+        SERVICE_ID = String.format(
                 Locale.getDefault(),
                 "%s.KIIT.%d.%s",
                 getApplicationContext().getPackageName(),
@@ -379,20 +386,26 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         );
     }
 
-    /** Get the roll number of a student */
-    private String getRollNumber(){
+    /**
+     * Get the roll number of a student
+     */
+    private String getRollNumber() {
         //TODO: add proper getRollNumber method
         return String.valueOf(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getEmail());
     }
 
-    /** Get the section name of a student */
+    /**
+     * Get the section name of a student
+     */
     private String getSection() {
         //TODO: add proper getSection method
         return "CS4";
     }
 
-    /** Get the current semester of a student */
-    private int getCurrentSemester(){
+    /**
+     * Get the current semester of a student
+     */
+    private int getCurrentSemester() {
         //TODO: add proper getCurrentSemester method
         return 6;
     }
@@ -406,13 +419,17 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         return mName;
     }
 
-    /** {@see ConnectionsActivity#getServiceId()} */
+    /**
+     * {@see ConnectionsActivity#getServiceId()}
+     */
     @Override
     public String getServiceId() {
         return SERVICE_ID;
     }
 
-    /** {@see ConnectionsActivity#getStrategy()} */
+    /**
+     * {@see ConnectionsActivity#getStrategy()}
+     */
     @Override
     public Strategy getStrategy() {
         return STRATEGY;
@@ -468,68 +485,4 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         ADVERTISING,
         CONTENT
     }
-
-//    protected static class Response implements Serializable {
-//        @NonNull private final int code;
-//        private final String message;
-//        private byte[] extra;
-//        private ArrayList<String> destination;
-//
-//        public @interface Code{
-//            int SET = 0;
-//            int ACK = 1;
-//        }
-//
-//        public Response(int code, String message, ArrayList<String> destination) {
-//            this.code = code;
-//            this.message = message;
-//            this.destination = destination;
-//            this.extra = null;
-//        }
-//
-//        public Response(int code, String message){
-//            this.code = code;
-//            this.message = message;
-//            this.destination = null;
-//            this.extra = null;
-//        }
-//
-//        static Response toResponse(Payload payload) throws IOException, ClassNotFoundException {
-//            byte[] bytes = payload.asBytes();
-//            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-//            ObjectInput in = new ObjectInputStream(bis);
-//            Response response =(Response) in.readObject();
-//            in.close();
-//            return response;
-//        }
-//
-//        static Payload toPayload(Response response) throws IOException {
-//            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-//            ObjectOutput out = new ObjectOutputStream(bos);
-//            out.writeObject(response);
-//            out.flush();
-//            byte[] bytes = bos.toByteArray();
-//            bos.close();
-//
-//            return Payload.fromBytes(bytes);
-//        }
-//
-//        public int getCode() {
-//            return code;
-//        }
-//
-//        public String getMessage() {
-//            return message;
-//        }
-//
-//
-//
-//        public ArrayList<String> getDestination() {
-//            return destination;
-//        }
-//
-//        public void setDestination(ArrayList<String> destination) {
-//            this.destination = destination;
-//        }
-//    }
 }
