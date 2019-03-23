@@ -28,17 +28,24 @@ public class HomeActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                auth.signOut();
-                Intent intent = new Intent(getApplicationContext(),SignInActivity.class);
-                startActivity(intent);
-
+                signOut();
             }
         });
-
-
-
-
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (auth.getCurrentUser() == null){
+            signOut();
+        }
+    }
+
+    protected void signOut(){
+        auth.signOut();
+        Intent intent = new Intent(getApplicationContext(),SignInActivity.class);
+        startActivity(intent);
+        finish();
+    }
 
 }
