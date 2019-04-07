@@ -29,8 +29,7 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     private static final int DISCOVERING_DELAY = 500;
 
     /** The limit of the connections of an endpoint */
-    private static final int MAX_CONNECTION_LIMIT = 1;
-
+    private static final int MAX_CONNECTION_LIMIT = 2;
 
     /**
      * The connection strategy we'll use for Nearby Connections. In this case, we've decided on
@@ -68,6 +67,9 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     /** A running log of debug messages. Only visible when DEBUG=true. */
     private TextView mDebugLogView;
 
+    /** Attendance Request to send */
+    private Response attendanceRequest;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,6 +82,8 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
 
         generateName();
         generateServiceId();
+
+        attendanceRequest = new Response(Response.Code.REQ,getName());
 
         setState(State.SEARCHING);
     }
@@ -171,15 +175,16 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         int connectedChildEndpoints = getConnectedChildEndpoints().size();
         if (connectedChildEndpoints == MAX_CONNECTION_LIMIT){
             setState(State.CONTENT);
-            Response response = new Response(Response.Code.SET,"DONE");
-            try {
-                Payload payload = Response.toPayload(response);
-                sendToChild(payload,endpoint.getId());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         } else if (connectedChildEndpoints > MAX_CONNECTION_LIMIT){
             disconnect(endpoint);
+            return;
+        }
+        Response response = new Response(Response.Code.SET,"DONE");
+        try {
+            Payload payload = Response.toPayload(response);
+            sendToChild(payload,endpoint.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -255,12 +260,11 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     }
 
     private void sendRequest(){
-        logD("Sending attendance request");
-        Response response = new Response(Response.Code.REQ,getRollNumber());
-        response.setDestination(new ArrayList<String>());
+        attendanceRequest.setDestination(new ArrayList<String>());
         if (isRequestPending){
+            logD("Sending attendance request");
             try {
-                sendToParent(Response.toPayload(response));
+                sendToParent(Response.toPayload(attendanceRequest));
                 isRequestPending = false;
                 if (!isAckReceived){
                     startAckTimer();
@@ -468,68 +472,4 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
         ADVERTISING,
         CONTENT
     }
-
-//    protected static class Response implements Serializable {
-//        @NonNull private final int code;
-//        private final String message;
-//        private byte[] extra;
-//        private ArrayList<String> destination;
-//
-//        public @interface Code{
-//            int SET = 0;
-//            int ACK = 1;
-//        }
-//
-//        public Response(int code, String message, ArrayList<String> destination) {
-//            this.code = code;
-//            this.message = message;
-//            this.destination = destination;
-//            this.extra = null;
-//        }
-//
-//        public Response(int code, String message){
-//            this.code = code;
-//            this.message = message;
-//            this.destination = null;
-//            this.extra = null;
-//        }
-//
-//        static Response toResponse(Payload payload) throws IOException, ClassNotFoundException {
-//            byte[] bytes = payload.asBytes();
-//            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-//            ObjectInput in = new ObjectInputStream(bis);
-//            Response response =(Response) in.readObject();
-//            in.close();
-//            return response;
-//        }
-//
-//        static Payload toPayload(Response response) throws IOException {
-//            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-//            ObjectOutput out = new ObjectOutputStream(bos);
-//            out.writeObject(response);
-//            out.flush();
-//            byte[] bytes = bos.toByteArray();
-//            bos.close();
-//
-//            return Payload.fromBytes(bytes);
-//        }
-//
-//        public int getCode() {
-//            return code;
-//        }
-//
-//        public String getMessage() {
-//            return message;
-//        }
-//
-//
-//
-//        public ArrayList<String> getDestination() {
-//            return destination;
-//        }
-//
-//        public void setDestination(ArrayList<String> destination) {
-//            this.destination = destination;
-//        }
-//    }
 }
