@@ -34,7 +34,7 @@ public class DemoTeacher extends ConnectionsActivity {
     /**
      * The limit of the connections of an endpoint
      */
-    private static final int MAX_CONNECTION_LIMIT = 1;
+    private static final int MAX_CONNECTION_LIMIT = 2;
 
 
     /**
@@ -174,7 +174,8 @@ public class DemoTeacher extends ConnectionsActivity {
         super.onConnectionInitiatedAsParent(endpoint, connectionInfo);
         if (!getState().equals(State.CONTENT)) {
             acceptConnectionAsParent(endpoint);
-        }
+        } else
+            rejectConnection(endpoint);
     }
 
     @Override
@@ -183,15 +184,16 @@ public class DemoTeacher extends ConnectionsActivity {
         int connectedChildEndpoints = getConnectedChildEndpoints().size();
         if (connectedChildEndpoints == MAX_CONNECTION_LIMIT) {
             setState(State.CONTENT);
-            Response response = new Response(Response.Code.SET,"DONE");
-            try {
-                Payload payload = Response.toPayload(response);
-                sendToChild(payload,endpoint.getId());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         } else if (connectedChildEndpoints > MAX_CONNECTION_LIMIT) {
             disconnect(endpoint);
+            return;
+        }
+        Response response = new Response(Response.Code.SET,"DONE");
+        try {
+            Payload payload = Response.toPayload(response);
+            sendToChild(payload,endpoint.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
