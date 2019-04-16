@@ -60,6 +60,29 @@ public class UploadActivity extends AppCompatActivity {
         //selectFile();
     }
 
+    public void upload(View view) {
+        try {
+            String h = DateFormat.format("MM-dd-yyyyy-h-mmssaa", System.currentTimeMillis()).toString();
+            // this will create a new name everytime and unique
+            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
+            // if external memory exists and folder with name Notes
+            if (!root.exists()) {
+                root.mkdirs(); // this will create folder.
+            }
+            File filepath = new File(root, h + ".txt");  // file path to save
+            FileWriter writer = new FileWriter(filepath);
+            writer.append("1605271\nCS4");
+            writer.flush();
+            writer.close();
+            String m = "File generated with name " + h + ".txt";
+            filepath.deleteOnExit();
+            uploadWithTransferUtility(filepath);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void uploadWithTransferUtility(final File picturePath) {
 
         Log.i(TAG,picturePath.getAbsolutePath());
@@ -76,8 +99,8 @@ public class UploadActivity extends AppCompatActivity {
                         .build();
 
         TransferObserver uploadObserver = transferUtility.upload(
-                    "public/s3Key.txt",
-                    picturePath,objectMetadata);
+                "public/s3Key.txt",
+                picturePath,objectMetadata);
 
 
         // Attach a listener to the observer to get state update and progress notifications
@@ -118,29 +141,5 @@ public class UploadActivity extends AppCompatActivity {
 
         Log.d(TAG, "Bytes Transferred: " + uploadObserver.getBytesTransferred());
         Log.d(TAG, "Bytes Total: " + uploadObserver.getBytesTotal());
-    }
-
-    public void upload(View view) {
-        try {
-            String h = DateFormat.format("MM-dd-yyyyy-h-mmssaa", System.currentTimeMillis()).toString();
-            // this will create a new name everytime and unique
-            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
-            // if external memory exists and folder with name Notes
-            if (!root.exists()) {
-                root.mkdirs(); // this will create folder.
-            }
-            File filepath = new File(root, h + ".txt");  // file path to save
-            FileWriter writer = new FileWriter(filepath);
-            writer.append("1605271\nCS4");
-            writer.flush();
-            writer.close();
-            String m = "File generated with name " + h + ".txt";
-            filepath.deleteOnExit();
-            uploadWithTransferUtility(filepath);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 }
