@@ -6,16 +6,12 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class HomeActivity extends AppCompatActivity {
 
     Button button;
     FirebaseAuth auth;
-
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,4 +44,7 @@ public class HomeActivity extends AppCompatActivity {
         finish();
     }
 
+    public void upload(View view) {
+        startActivity(new Intent(getApplicationContext(),UploadActivity.class));
+    }
 }
