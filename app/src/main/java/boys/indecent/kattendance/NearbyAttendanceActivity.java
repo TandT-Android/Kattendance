@@ -5,8 +5,12 @@ import android.os.Handler;
 import android.text.SpannableString;
 import android.text.format.DateFormat;
 import android.text.style.ForegroundColorSpan;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.chaos.view.PinView;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.Strategy;
@@ -20,6 +24,8 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+
+import boys.indecent.mypresense.Response;
 
 public class NearbyAttendanceActivity extends ConnectionsActivity {
     /** If true, debug logs are shown on the device. */
@@ -55,6 +61,8 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     /** If true, the endpoint does not need to send any more request */
     private boolean isAckReceived;
 
+    private boolean isOTPVerified;
+
     /**
      * The state of the app. As the app changes states, the UI will update and advertising/discovery
      * will start/stop.
@@ -70,15 +78,32 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     /** Attendance Request to send */
     private Response attendanceRequest;
 
+    private int OTP;
+
+    private Button buttonVerify;
+    private PinView pinView;
+    private TextView tvDesc, tvState;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_nearby_attendance);
 
+        buttonVerify = findViewById(R.id.buttonVerify);
+        pinView = findViewById(R.id.otp_view);
+        tvDesc = findViewById(R.id.textViewDesc);
+        tvState = findViewById(R.id.textViewState);
+
         mDebugLogView = findViewById(R.id.debug_log);
         isRequestPending = true;
         isAckReceived = false;
+        isOTPVerified = false;
         forwardingQueue = new ArrayDeque<>();
+
+
+        pinView.setVisibility(View.INVISIBLE);
+        buttonVerify.setVisibility(View.INVISIBLE);
+        tvDesc.setVisibility(View.INVISIBLE);
 
         generateName();
         generateServiceId();
@@ -179,7 +204,7 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
             disconnect(endpoint);
             return;
         }
-        Response response = new Response(Response.Code.SET,"DONE");
+        Response response = new Response(Response.Code.SET,String.valueOf(OTP));
         try {
             Payload payload = Response.toPayload(response);
             sendToChild(payload,endpoint.getId());
@@ -202,7 +227,7 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
                 Response response = Response.toResponse(payload);
                 switch (response.getCode()){
                     case Response.Code.SET:
-                        triggerAdvertising();
+                        onSetRequest(response);
                         break;
                     case Response.Code.ACK:
                         logD("Destination : " + response.getDestination().toString());
@@ -221,6 +246,29 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
                 e.printStackTrace();
                 logE("Response format unsupported",e);
             }
+        }
+    }
+
+    private void onSetRequest(Response response) {
+        OTP = Integer.parseInt(response.getMessage());
+        startAdvertising();
+        pinView.setVisibility(View.VISIBLE);
+        buttonVerify.setVisibility(View.VISIBLE);
+        tvDesc.setVisibility(View.VISIBLE);
+        tvDesc.setText("Enter verification code to mark your attendance");
+    }
+
+    public void verifyPin(View view){
+        String entered = String.valueOf(pinView.getText());
+        if (entered.equals(String.valueOf(OTP))){
+            isOTPVerified = true;
+            pinView.setVisibility(View.INVISIBLE);
+            buttonVerify.setVisibility(View.INVISIBLE);
+            tvDesc.setVisibility(View.INVISIBLE);
+            Toast.makeText(this, "Verified successfully", Toast.LENGTH_SHORT).show();
+        } else {
+            pinView.setError("Try again!");
+            pinView.setText("");
         }
     }
 
@@ -260,13 +308,13 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
     }
 
     private void sendRequest(){
-        attendanceRequest.setDestination(new ArrayList<String>());
-        if (isRequestPending){
+        if (isOTPVerified && isRequestPending) {
+            attendanceRequest.setDestination(new ArrayList<String>());
             logD("Sending attendance request");
             try {
                 sendToParent(Response.toPayload(attendanceRequest));
                 isRequestPending = false;
-                if (!isAckReceived){
+                if (!isAckReceived) {
                     startAckTimer();
                 }
             } catch (IOException e) {
@@ -384,8 +432,8 @@ public class NearbyAttendanceActivity extends ConnectionsActivity {
 
     /** Get the roll number of a student */
     private String getRollNumber(){
-        //TODO: add proper getRollNumber method
-        return String.valueOf(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getEmail());
+        String email = String.valueOf(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getEmail());
+        return email.substring(0,email.lastIndexOf('@'));
     }
 
     /** Get the section name of a student */

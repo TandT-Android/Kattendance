@@ -20,6 +20,8 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import boys.indecent.mypresense.Response;
+
 public class DemoTeacher extends ConnectionsActivity {
     /**
      * If true, debug logs are shown on the device.

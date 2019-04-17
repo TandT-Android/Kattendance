@@ -1,4 +1,4 @@
-package boys.indecent.kattendance;
+package boys.indecent.mypresense;
 
 import com.google.android.gms.nearby.connection.Payload;
 
@@ -38,7 +38,7 @@ public class Response implements Serializable {
         this.extra = null;
     }
 
-    static Response toResponse(Payload payload) throws IOException, ClassNotFoundException {
+    public static Response toResponse(Payload payload) throws IOException, ClassNotFoundException {
         byte[] bytes = payload.asBytes();
         ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
         ObjectInput in = new ObjectInputStream(bis);
@@ -47,7 +47,7 @@ public class Response implements Serializable {
         return response;
     }
 
-    static Payload toPayload(Response response) throws IOException {
+    public static Payload toPayload(Response response) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = new ObjectOutputStream(bos);
         out.writeObject(response);

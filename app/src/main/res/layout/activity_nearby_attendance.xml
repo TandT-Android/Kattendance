@@ -7,6 +7,19 @@
     tools:context=".NearbyAttendanceActivity">
 
     <TextView
+        android:id="@+id/textViewState"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="IDLE"
+        android:textSize="24sp"
+        app:layout_constraintBottom_toTopOf="@+id/guideline"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
         android:id="@+id/debug_log"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -14,16 +27,76 @@
         android:layout_margin="10dp"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
+        android:background="#000000"
         android:gravity="bottom"
         android:scrollbars="vertical"
         android:textColor="@color/textColor"
         android:textSize="20sp"
-        android:background="#000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/guideline"
         app:layout_constraintVertical_bias="0.5" />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.66" />
+
+    <com.chaos.view.PinView
+        android:id="@+id/otp_view"
+        style="@style/PinWidget.PinView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="#FFFFFF"
+        android:cursorVisible="true"
+        android:inputType="number"
+        android:padding="2dp"
+        android:textColor="@color/colorPrimary"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:cursorColor="@color/colorAccent"
+        app:cursorWidth="2dp"
+        app:hideLineWhenFilled="false"
+        app:itemCount="4"
+        app:itemHeight="48dp"
+        app:itemRadius="4dp"
+        app:itemSpacing="0dp"
+        app:itemWidth="48dp"
+        app:layout_constraintBottom_toTopOf="@+id/buttonVerify"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:lineColor="@color/colorPrimaryDark"
+        app:lineWidth="2dp"
+        app:viewType="rectangle" />
+
+    <Button
+        android:id="@+id/buttonVerify"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="verifyPin"
+        android:layout_marginBottom="8dp"
+        android:text="Verify"
+        app:layout_constraintBottom_toTopOf="@+id/guideline"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/textViewDesc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="Enter OTP to mark your attendance"
+        android:textSize="18sp"
+        app:layout_constraintBottom_toTopOf="@+id/otp_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </android.support.constraint.ConstraintLayout>
