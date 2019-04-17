@@ -381,8 +381,7 @@ public class DemoTeacher extends ConnectionsActivity {
         int semester = getCurrentSemester();
         SERVICE_ID = String.format(
                 Locale.getDefault(),
-                "%s.KIIT.%d.%s",
-                getApplicationContext().getPackageName(),
+                "boys.indecent.mypresense.KIIT.%d.%s",
                 semester,
                 section
         );
