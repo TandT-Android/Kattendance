@@ -11,8 +11,6 @@ public class LauncherActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launcher);
-
-
         Intent intent = new Intent(this,SignInActivity.class);
         startActivity(intent);
     }

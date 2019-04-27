@@ -10,7 +10,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 public class HomeActivity extends AppCompatActivity {
 
-    Button button;
+    Button button, check_attendance, give_attendance;
     FirebaseAuth auth;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +26,22 @@ public class HomeActivity extends AppCompatActivity {
                 signOut();
             }
         });
+
+        check_attendance=findViewById(R.id.check_attendance);
+        give_attendance=findViewById(R.id.give_attendance);
+
+        /*give_attendance.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(HomeActivity.this,GiveAttendance.class));
+            }
+        });
+        check_attendance.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(HomeActivity.this,CheckAttendance.class));
+            }
+        });*/
     }
 
 
